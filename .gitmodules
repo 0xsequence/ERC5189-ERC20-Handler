@@ -4,3 +4,6 @@
 [submodule "lib/erc5189-libs"]
 	path = lib/erc5189-libs
 	url = https://github.com/ScreamingHawk/erc5189-libs
+[submodule "lib/solady"]
+	path = lib/solady
+	url = https://github.com/vectorized/solady
