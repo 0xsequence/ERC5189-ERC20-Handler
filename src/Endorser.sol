@@ -2,15 +2,11 @@
 pragma solidity ^0.8.0;
 
 import { ERC20 } from "solady/tokens/ERC20.sol";
-import { IEndorser } from "erc5189-libs/interfaces/IEndorser.sol";
 import { Ownable } from "solady/auth/Ownable.sol";
 import { LibString } from "solady/utils/LibString.sol";
 import { FixedPointMathLib } from "solady/utils/FixedPointMathLib.sol";
-
-import {
-  LibDependencyCarrier,
-  DependencyCarrier
-} from "erc5189-libs/utils/LibDependencyCarrier.sol";
+import { IEndorser } from "erc5189-libs/interfaces/IEndorser.sol";
+import { LibDc, Dc } from "erc5189-libs/LibDc.sol";
 
 import { Handler } from "./Handler.sol";
 import { LibString2 } from "./libs/LibString2.sol";
@@ -23,10 +19,10 @@ struct ERC20Config {
 }
 
 contract Endorser is IEndorser, Ownable {
-  using LibDependencyCarrier for *;
   using FixedPointMathLib for *;
   using LibString for *;
   using LibString2 for *;
+  using LibDc for *;
 
   event SetHandler(address indexed handler, bool valid);
   event SetConfig(
@@ -63,45 +59,32 @@ contract Endorser is IEndorser, Ownable {
   }
 
   function isOperationReady(
-    address _entrypoint,
-    bytes calldata _data,
-    bytes calldata _endorserCalldata,
-    uint256 _gasLimit,
-    uint256 _maxFeePerGas,
-    uint256 _maxPriorityFeePerGas,
-    address _feeToken,
-    uint256 _baseFeeScalingFactor,
-    uint256 _baseFeeNormalizationFactor,
-    bool _hasUntrustedContext
-  ) external returns (
-    bool readiness,
-    GlobalDependency memory globalDependency,
-    Dependency[] memory dependencies
-  ) {
-    if (!validHandler[_entrypoint]) {
-      revert("invalid handler: ".c(_entrypoint));
+    IEndorser.Operation calldata _op
+  ) external returns (bool, GlobalDependency memory, Dependency[] memory) {
+    if (!validHandler[_op.entrypoint]) {
+      revert("invalid handler: ".c(_op.entrypoint));
     }
 
-    ERC20Config memory cfg = configForToken[_feeToken];
+    ERC20Config memory cfg = configForToken[_op.feeToken];
     if (cfg.minGas == 0) {
-      if (_hasUntrustedContext) {
+      if (_op.hasUntrustedContext) {
         // TODO: This is incorrect, it should simulate everything instead
         cfg.minGas = 150_000;
       } else {
-        revert("unsupported token: ".c(_feeToken));
+        revert("unsupported token: ".c(_op.feeToken));
       }
     }
 
-    if (cfg.minGas > _gasLimit) {
-      revert("insufficient gas: ".c(_gasLimit).c(" < ".s()).c(cfg.minGas));
+    if (cfg.minGas > _op.gasLimit) {
+      revert("insufficient gas: ".c(_op.gasLimit).c(" < ".s()).c(cfg.minGas));
     }
 
-    if (_baseFeeNormalizationFactor != 1e18) {
-      revert("normalization factor != 1e18: ".c(_baseFeeNormalizationFactor));
+    if (_op.feeNormalizationFactor != 1e18) {
+      revert("normalization factor != 1e18: ".c(_op.feeNormalizationFactor));
     }
 
     // Decode the data
-    bytes memory sig = _data[0:4];
+    bytes memory sig = _op.data[0:4];
     bytes memory pselector = abi.encodePacked(Handler.doTransfer.selector);
     if (keccak256(sig) != keccak256(pselector)) {
       revert("invalid selector: ".c(sig).c(" != ".s()).c(pselector));
@@ -121,7 +104,7 @@ contract Endorser is IEndorser, Ownable {
       bytes32 s,
       uint8 v
     ) = abi.decode(
-      _data[4:],
+      _op.data[4:],
       (
         address,
         address,
@@ -138,8 +121,8 @@ contract Endorser is IEndorser, Ownable {
       )
     );
 
-    if (token != _feeToken) {
-      revert("invalid inner token: ".c(token).c(" != ".s()).c(_feeToken));
+    if (token != _op.feeToken) {
+      revert("invalid inner token: ".c(token).c(" != ".s()).c(_op.feeToken));
     }
 
     if (to == token) {
@@ -150,20 +133,20 @@ contract Endorser is IEndorser, Ownable {
       revert("expired deadline: ".c(deadline).c(" < ".s()).c(block.timestamp));
     }
 
-    if (gas != _gasLimit) {
-      revert("invalid inner gas: ".c(gas).c(" != ".s()).c(_gasLimit));
+    if (gas != _op.gasLimit) {
+      revert("invalid inner gas: ".c(gas).c(" != ".s()).c(_op.gasLimit));
     }
 
-    if (maxFeePerGas != _maxFeePerGas) {
-      revert("invalid inner max fee per gas: ".c(maxFeePerGas).c(" != ".s()).c(_maxFeePerGas));
+    if (maxFeePerGas != _op.maxFeePerGas) {
+      revert("invalid inner max fee per gas: ".c(maxFeePerGas).c(" != ".s()).c(_op.maxFeePerGas));
     }
 
-    if (priorityFee != _maxPriorityFeePerGas) {
-      revert("invalid inner priority fee: ".c(priorityFee).c(" != ".s()).c(_maxPriorityFeePerGas));
+    if (priorityFee != _op.maxPriorityFeePerGas) {
+      revert("invalid inner priority fee: ".c(priorityFee).c(" != ".s()).c(_op.maxPriorityFeePerGas));
     }
 
-    if (baseFeeRate != _baseFeeScalingFactor) {
-      revert("invalid inner base fee: ".c(baseFeeRate).c(" != ".s()).c(_baseFeeScalingFactor));
+    if (baseFeeRate != _op.feeScalingFactor) {
+      revert("invalid inner base fee: ".c(baseFeeRate).c(" != ".s()).c(_op.feeScalingFactor));
     }
 
     bytes32 ophash = keccak256(
@@ -195,7 +178,7 @@ contract Endorser is IEndorser, Ownable {
     uint256 combined = value + maxFee;
     ERC20(token).permit(
       from,
-      _entrypoint,
+      _op.entrypoint,
       combined,
       uint256(ophash),
       v,
@@ -203,9 +186,9 @@ contract Endorser is IEndorser, Ownable {
       s
     );
 
-    DependencyCarrier memory dc;
+    Dc memory dc;
 
-    if (_hasUntrustedContext) {
+    if (_op.hasUntrustedContext) {
       emit UntrustedStarted();
 
       // Doing some fetches will automatically add the dependencies
@@ -218,7 +201,7 @@ contract Endorser is IEndorser, Ownable {
 
       emit UntrustedEnded();
 
-      dc = LibDependencyCarrier.create();
+      dc = LibDc.create();
     } else {
       // The user should have enough balance to pay for the fee and the value
       uint256 balance = ERC20(token).balanceOf(from);
@@ -242,6 +225,8 @@ contract Endorser is IEndorser, Ownable {
       dc.addMaxBlockTimestamp(deadline);
     }
 
-    return (true, dc.globalDependency, dc.dependencies);
+    return dc.build();
   }
+
+  function simulationSettings() external view returns (Replacement[] memory replacements) { }
 }

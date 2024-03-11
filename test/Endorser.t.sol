@@ -48,18 +48,20 @@ contract EndorserTest is Test {
   ) external {
     endorser.setHandler(address(_entrypoint), false);
     vm.expectRevert("invalid handler: ".c(_entrypoint).b());
-    endorser.isOperationReady(
-      _entrypoint,
-      _data,
-      bytes(""),
-      _gasLimit,
-      _maxFeePerGas,
-      _maxPriorityFeePerGas,
-      _feeToken,
-      _baseFeeScalingFactor,
-      _baseFeeNormalizationFactor,
-      _hasUntrustedContext
-    );
+
+    IEndorser.Operation memory op;
+
+    op.entrypoint = _entrypoint;
+    op.data = _data;
+    op.gasLimit = _gasLimit;
+    op.maxFeePerGas = _maxFeePerGas;
+    op.maxPriorityFeePerGas = _maxPriorityFeePerGas;
+    op.feeToken = _feeToken;
+    op.feeScalingFactor = _baseFeeScalingFactor;
+    op.feeNormalizationFactor = _baseFeeNormalizationFactor;
+    op.hasUntrustedContext = _hasUntrustedContext;
+
+    endorser.isOperationReady(op);
   }
 
   function testRejectUnsupportedToken(
@@ -74,18 +76,19 @@ contract EndorserTest is Test {
   ) external {
     vm.assume(_feeToken != address(token));
     vm.expectRevert("unsupported token: ".c(_feeToken).b());
-    endorser.isOperationReady(
-      address(handler),
-      _data,
-      bytes(""),
-      _gasLimit,
-      _maxFeePerGas,
-      _maxPriorityFeePerGas,
-      _feeToken,
-      _baseFeeScalingFactor,
-      _baseFeeNormalizationFactor,
-      _hasUntrustedContext
-    );
+
+    IEndorser.Operation memory op;
+    op.entrypoint = address(handler);
+    op.data = _data;
+    op.gasLimit = _gasLimit;
+    op.maxFeePerGas = _maxFeePerGas;
+    op.maxPriorityFeePerGas = _maxPriorityFeePerGas;
+    op.feeToken = _feeToken;
+    op.feeScalingFactor = _baseFeeScalingFactor;
+    op.feeNormalizationFactor = _baseFeeNormalizationFactor;
+    op.hasUntrustedContext = _hasUntrustedContext;
+
+    endorser.isOperationReady(op);
   }
 
   function testRejectInsufficientGas(
@@ -99,18 +102,19 @@ contract EndorserTest is Test {
   ) external {
     _gasLimit = bound(_gasLimit, 0, 119_999);
     vm.expectRevert("insufficient gas: ".c(_gasLimit).c(" < 120000".s()).b());
-    endorser.isOperationReady(
-      address(handler),
-      _data,
-      bytes(""),
-      _gasLimit,
-      _maxFeePerGas,
-      _maxPriorityFeePerGas,
-      address(token),
-      _baseFeeScalingFactor,
-      _baseFeeNormalizationFactor,
-      _hasUntrustedContext
-    );
+
+    IEndorser.Operation memory op;
+    op.entrypoint = address(handler);
+    op.data = _data;
+    op.gasLimit = _gasLimit;
+    op.maxFeePerGas = _maxFeePerGas;
+    op.maxPriorityFeePerGas = _maxPriorityFeePerGas;
+    op.feeToken = address(token);
+    op.feeScalingFactor = _baseFeeScalingFactor;
+    op.feeNormalizationFactor = _baseFeeNormalizationFactor;
+    op.hasUntrustedContext = _hasUntrustedContext;
+
+    endorser.isOperationReady(op);
   }
 
   function testRejectBadNormFactor(
@@ -125,18 +129,19 @@ contract EndorserTest is Test {
     vm.assume(_baseFeeNormalizationFactor != 1e18);
     _gasLimit = bound(_gasLimit, 120_000, type(uint256).max);
     vm.expectRevert("normalization factor != 1e18: ".c(_baseFeeNormalizationFactor).b());
-    endorser.isOperationReady(
-      address(handler),
-      _data,
-      bytes(""),
-      _gasLimit,
-      _maxFeePerGas,
-      _maxPriorityFeePerGas,
-      address(token),
-      _baseFeeScalingFactor,
-      _baseFeeNormalizationFactor,
-      _hasUntrustedContext
-    );
+
+    IEndorser.Operation memory op;
+    op.entrypoint = address(handler);
+    op.data = _data;
+    op.gasLimit = _gasLimit;
+    op.maxFeePerGas = _maxFeePerGas;
+    op.maxPriorityFeePerGas = _maxPriorityFeePerGas;
+    op.feeToken = address(token);
+    op.feeScalingFactor = _baseFeeScalingFactor;
+    op.feeNormalizationFactor = _baseFeeNormalizationFactor;
+    op.hasUntrustedContext = _hasUntrustedContext;
+
+    endorser.isOperationReady(op);
   }
 
   function testRejectUntrustedContext(
@@ -148,18 +153,19 @@ contract EndorserTest is Test {
   ) external {
     _gasLimit = bound(_gasLimit, 120_000, type(uint256).max);
     vm.expectRevert("untrusted context not needed");
-    endorser.isOperationReady(
-      address(handler),
-      _data,
-      bytes(""),
-      _gasLimit,
-      _maxFeePerGas,
-      _maxPriorityFeePerGas,
-      address(token),
-      _baseFeeScalingFactor,
-      1e18,
-      true
-    );
+
+    IEndorser.Operation memory op;
+    op.entrypoint = address(handler);
+    op.data = _data;
+    op.gasLimit = _gasLimit;
+    op.maxFeePerGas = _maxFeePerGas;
+    op.maxPriorityFeePerGas = _maxPriorityFeePerGas;
+    op.feeToken = address(token);
+    op.feeScalingFactor = _baseFeeScalingFactor;
+    op.feeNormalizationFactor = 1e18;
+    op.hasUntrustedContext = true;
+
+    endorser.isOperationReady(op);
   }
 
   function testRejectBadFunctionSelector(
@@ -179,18 +185,18 @@ contract EndorserTest is Test {
       .b()
     );
 
-    endorser.isOperationReady(
-      address(handler),
-      abi.encodePacked(_badSelector, _data),
-      bytes(""),
-      _gasLimit,
-      _maxFeePerGas,
-      _maxPriorityFeePerGas,
-      address(token),
-      _baseFeeScalingFactor,
-      1e18,
-      false
-    );
+    IEndorser.Operation memory op;
+    op.entrypoint = address(handler);
+    op.data = abi.encodePacked(_badSelector, _data);
+    op.gasLimit = _gasLimit;
+    op.maxFeePerGas = _maxFeePerGas;
+    op.maxPriorityFeePerGas = _maxPriorityFeePerGas;
+    op.feeToken = address(token);
+    op.feeScalingFactor = _baseFeeScalingFactor;
+    op.feeNormalizationFactor = 1e18;
+    op.hasUntrustedContext = false;
+
+    endorser.isOperationReady(op);
   }
 
   function testRejectBadFeeToken(
@@ -228,18 +234,18 @@ contract EndorserTest is Test {
         .b()
     );
 
-    endorser.isOperationReady(
-      address(handler),
-      data,
-      bytes(""),
-      _gasLimit,
-      _maxFeePerGas,
-      _maxPriorityFeePerGas,
-      address(token),
-      _baseFeeScalingFactor,
-      1e18,
-      false
-    );
+    IEndorser.Operation memory op;
+    op.entrypoint = address(handler);
+    op.data = data;
+    op.gasLimit = _gasLimit;
+    op.maxFeePerGas = _maxFeePerGas;
+    op.maxPriorityFeePerGas = _maxPriorityFeePerGas;
+    op.feeToken = address(token);
+    op.feeScalingFactor = _baseFeeScalingFactor;
+    op.feeNormalizationFactor = 1e18;
+    op.hasUntrustedContext = false;
+
+    endorser.isOperationReady(op);
   }
 
   function testRejectTransferToSelf(
@@ -267,18 +273,18 @@ contract EndorserTest is Test {
     );
 
     vm.expectRevert("transfer to self token");
-    endorser.isOperationReady(
-      address(handler),
-      data,
-      bytes(""),
-      _gasLimit,
-      _maxFeePerGas,
-      _maxPriorityFeePerGas,
-      address(token),
-      _baseFeeScalingFactor,
-      1e18,
-      false
-   );
+
+    IEndorser.Operation memory op;
+    op.entrypoint = address(handler);
+    op.data = data;
+    op.gasLimit = _gasLimit;
+    op.maxFeePerGas = _maxFeePerGas;
+    op.maxPriorityFeePerGas = _maxPriorityFeePerGas;
+    op.feeToken = address(token);
+    op.feeScalingFactor = _baseFeeScalingFactor;
+    op.feeNormalizationFactor = 1e18;
+
+    endorser.isOperationReady(op);
   }
 
   function testRejectExpiredDeadline(
@@ -314,18 +320,17 @@ contract EndorserTest is Test {
       .b()
     );
 
-    endorser.isOperationReady(
-      address(handler),
-      data,
-      bytes(""),
-      _gasLimit,
-      _maxFeePerGas,
-      _maxPriorityFeePerGas,
-      address(token),
-      _baseFeeScalingFactor,
-      1e18,
-      false
-    );
+    IEndorser.Operation memory op;
+    op.entrypoint = address(handler);
+    op.data = data;
+    op.gasLimit = _gasLimit;
+    op.maxFeePerGas = _maxFeePerGas;
+    op.maxPriorityFeePerGas = _maxPriorityFeePerGas;
+    op.feeToken = address(token);
+    op.feeScalingFactor = _baseFeeScalingFactor;
+    op.feeNormalizationFactor = 1e18;
+
+    endorser.isOperationReady(op);
   }
 
   function testRejectBadInnerGas(
@@ -363,18 +368,17 @@ contract EndorserTest is Test {
       .b()
     );
 
-    endorser.isOperationReady(
-      address(handler),
-      data,
-      bytes(""),
-      _gasLimit,
-      _maxFeePerGas,
-      _maxPriorityFeePerGas,
-      address(token),
-      _baseFeeScalingFactor,
-      1e18,
-      false
-    );
+    IEndorser.Operation memory op;
+    op.entrypoint = address(handler);
+    op.data = data;
+    op.gasLimit = _gasLimit;
+    op.maxFeePerGas = _maxFeePerGas;
+    op.maxPriorityFeePerGas = _maxPriorityFeePerGas;
+    op.feeToken = address(token);
+    op.feeScalingFactor = _baseFeeScalingFactor;
+    op.feeNormalizationFactor = 1e18;
+
+    endorser.isOperationReady(op);
   }
 
   function testRejectBadInnerMaxFeePerGas(
@@ -413,18 +417,17 @@ contract EndorserTest is Test {
       .b()
     );
 
-    endorser.isOperationReady(
-      address(handler),
-      data,
-      bytes(""),
-      _gasLimit,
-      _maxFeePerGas,
-      _maxPriorityFeePerGas,
-      address(token),
-      _baseFeeScalingFactor,
-      1e18,
-      false
-    );
+    IEndorser.Operation memory op;
+    op.entrypoint = address(handler);
+    op.data = data;
+    op.gasLimit = _gasLimit;
+    op.maxFeePerGas = _maxFeePerGas;
+    op.maxPriorityFeePerGas = _maxPriorityFeePerGas;
+    op.feeToken = address(token);
+    op.feeScalingFactor = _baseFeeScalingFactor;
+    op.feeNormalizationFactor = 1e18;
+
+    endorser.isOperationReady(op);
   }
 
   function testRejectBadInnerPriorityFee(
@@ -463,18 +466,17 @@ contract EndorserTest is Test {
       .b()
     );
 
-    endorser.isOperationReady(
-      address(handler),
-      data,
-      bytes(""),
-      _gasLimit,
-      _maxFeePerGas,
-      _maxPriorityFeePerGas,
-      address(token),
-      _baseFeeScalingFactor,
-      1e18,
-      false
-    );
+    IEndorser.Operation memory op;
+    op.entrypoint = address(handler);
+    op.data = data;
+    op.gasLimit = _gasLimit;
+    op.maxFeePerGas = _maxFeePerGas;
+    op.maxPriorityFeePerGas = _maxPriorityFeePerGas;
+    op.feeToken = address(token);
+    op.feeScalingFactor = _baseFeeScalingFactor;
+    op.feeNormalizationFactor = 1e18;
+
+    endorser.isOperationReady(op);
   }
 
   function testRejectBadInnerBasefeeScaling(
@@ -513,18 +515,17 @@ contract EndorserTest is Test {
       .b()
     );
 
-    endorser.isOperationReady(
-      address(handler),
-      data,
-      bytes(""),
-      _gasLimit,
-      _maxFeePerGas,
-      _maxPriorityFeePerGas,
-      address(token),
-      _baseFeeScalingFactor,
-      1e18,
-      false
-    );
+    IEndorser.Operation memory op;
+    op.entrypoint = address(handler);
+    op.data = data;
+    op.gasLimit = _gasLimit;
+    op.maxFeePerGas = _maxFeePerGas;
+    op.maxPriorityFeePerGas = _maxPriorityFeePerGas;
+    op.feeToken = address(token);
+    op.feeScalingFactor = _baseFeeScalingFactor;
+    op.feeNormalizationFactor = 1e18;
+
+    endorser.isOperationReady(op);
   }
 
   function testRejectIfBadPermission(
@@ -562,18 +563,18 @@ contract EndorserTest is Test {
     );
 
     vm.expectRevert();
-    endorser.isOperationReady(
-      address(handler),
-      data,
-      bytes(""),
-      _gasLimit,
-      _maxFeePerGas,
-      _maxPriorityFeePerGas,
-      address(token),
-      _baseFeeScalingFactor,
-      1e18,
-      false
-    );
+
+    IEndorser.Operation memory op;
+    op.entrypoint = address(handler);
+    op.data = data;
+    op.gasLimit = _gasLimit;
+    op.maxFeePerGas = _maxFeePerGas;
+    op.maxPriorityFeePerGas = _maxPriorityFeePerGas;
+    op.feeToken = address(token);
+    op.feeScalingFactor = _baseFeeScalingFactor;
+    op.feeNormalizationFactor = 1e18;
+
+    endorser.isOperationReady(op);
   }
 
   function testRejectLowBalance(
@@ -658,18 +659,17 @@ contract EndorserTest is Test {
         .b()
     );
 
-    endorser.isOperationReady(
-      address(handler),
-      data,
-      bytes(""),
-      _gasLimit,
-      _maxFeePerGas,
-      _priorityFee,
-      address(token),
-      _baseFeeRate,
-      1e18,
-      false
-    );
+    IEndorser.Operation memory op;
+    op.entrypoint = address(handler);
+    op.data = data;
+    op.gasLimit = _gasLimit;
+    op.maxFeePerGas = _maxFeePerGas;
+    op.maxPriorityFeePerGas = _priorityFee;
+    op.feeToken = address(token);
+    op.feeScalingFactor = _baseFeeRate;
+    op.feeNormalizationFactor = 1e18;
+
+    endorser.isOperationReady(op);
   }
 
   function testRejectSlotNotFound(
@@ -754,18 +754,17 @@ contract EndorserTest is Test {
         .b()
     );
 
-    endorser.isOperationReady(
-      address(handler),
-      data,
-      bytes(""),
-      _gasLimit,
-      _maxFeePerGas,
-      _priorityFee,
-      address(token),
-      _baseFeeRate,
-      1e18,
-      false
-    );
+    IEndorser.Operation memory op;
+    op.entrypoint = address(handler);
+    op.data = data;
+    op.gasLimit = _gasLimit;
+    op.maxFeePerGas = _maxFeePerGas;
+    op.maxPriorityFeePerGas = _priorityFee;
+    op.feeToken = address(token);
+    op.feeScalingFactor = _baseFeeRate;
+    op.feeNormalizationFactor = 1e18;
+
+    endorser.isOperationReady(op);
   }
 
   function testAcceptOperation(
@@ -844,22 +843,21 @@ contract EndorserTest is Test {
     _balance = bound(_balance, maxSpend, type(uint256).max);
     token.mint(from, _balance);
 
+    IEndorser.Operation memory op;
+    op.entrypoint = address(handler);
+    op.data = data;
+    op.gasLimit = _gasLimit;
+    op.maxFeePerGas = _maxFeePerGas;
+    op.maxPriorityFeePerGas = _priorityFee;
+    op.feeToken = address(token);
+    op.feeScalingFactor = _baseFeeRate;
+    op.feeNormalizationFactor = 1e18;
+
     (
       bool readiness,
       IEndorser.GlobalDependency memory globalDependency,
       IEndorser.Dependency[] memory dependencies
-    ) = endorser.isOperationReady(
-      address(handler),
-      data,
-      bytes(""),
-      _gasLimit,
-      _maxFeePerGas,
-      _priorityFee,
-      address(token),
-      _baseFeeRate,
-      1e18,
-      false
-    );
+    ) = endorser.isOperationReady(op);
 
     assertEq(readiness, true);
 

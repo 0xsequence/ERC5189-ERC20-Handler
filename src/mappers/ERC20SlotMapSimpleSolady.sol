@@ -1,13 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {
-  LibDependencyCarrier,
-  DependencyCarrier
-} from "erc5189-libs/utils/LibDependencyCarrier.sol";
-
-import { LibSlot } from "erc5189-libs/utils/LibSlot.sol";
-
+import { LibDc, Dc } from "erc5189-libs/LibDc.sol";
+import { LibSlot } from "erc5189-libs/LibSlot.sol";
 import { ERC20SlotMap } from "./ERC20SlotMap.sol";
 
 /**
@@ -20,7 +15,7 @@ import { ERC20SlotMap } from "./ERC20SlotMap.sol";
   - Upgradeability
  */
 contract ERC20SlotMapSimpleSolady is ERC20SlotMap {
-  using LibDependencyCarrier for *;
+  using LibDc for *;
 
   uint256 private constant _BALANCE_SLOT_SEED = 0x87a211a2;
   uint256 private constant _NONCES_SLOT_SEED = 0x38377508;
@@ -50,8 +45,8 @@ contract ERC20SlotMapSimpleSolady is ERC20SlotMap {
     address _from,
     address,
     bytes calldata
-  ) external pure returns (DependencyCarrier memory dc) {
-    dc = LibDependencyCarrier.create();
+  ) external pure returns (Dc memory dc) {
+    dc = LibDc.create();
     dc.addSlotDependency(
       _token,
       _balanceSlot(_from)
