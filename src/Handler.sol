@@ -46,10 +46,11 @@ contract Handler {
 
       // Compute how much we will need to pay in fees.
       // Notice that all units are in ERC20 except block.basefee
-      uint256 blockBaseFee = block.basefee.rawMulWad(_baseFeeRate);
-      uint256 feePerGas = _maxFeePerGas.min(blockBaseFee + _priorityFee);
-      uint256 fee = feePerGas * _gas;
-      uint256 maxFee = _maxFeePerGas * _gas;
+      uint256 feePerGas = _maxFeePerGas.min(block.basefee + _priorityFee);
+
+      uint256 gr = _gas * _baseFeeRate;
+      uint256 fee = gr.rawMulWad(feePerGas);
+      uint256 maxFee = gr.rawMulWad(_maxFeePerGas);
 
       // Re-use the inner deadline for the permit
       // this way we only need ONE signature

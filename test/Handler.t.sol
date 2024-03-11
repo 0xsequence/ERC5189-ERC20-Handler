@@ -66,11 +66,12 @@ contract HandlerTest is Test {
     _gas = bound(_gas, 0, 30_000_000);
     _maxFeePerGas = bound(_maxFeePerGas, 0, 100000 gwei);
     _value = bound(_value, 0, 1_000_000_000_000_000_000 ether);
+    _baseFeeRate = bound(_baseFeeRate, 0, 1_000_000_000_000 ether);
 
     address from = vm.addr(_pk);
-    vm.assume(_to != from);
+    vm.assume(_to != from && tx.origin != from && tx.origin != _to);
 
-    uint256 maxSpend =  _value + (_maxFeePerGas * _gas);
+    uint256 maxSpend =  _value + ((_maxFeePerGas * _gas * _baseFeeRate) / 1e18);
     token.mint(from, maxSpend);
 
     bytes32 ophash = keccak256(
@@ -122,10 +123,9 @@ contract HandlerTest is Test {
       v
     );
 
-    uint256 blockBaseFee = (block.basefee * _baseFeeRate) / 1e18;
-    uint256 runtimeFeePerGas = blockBaseFee + _priorityFee;
+    uint256 runtimeFeePerGas = block.basefee + _priorityFee;
     uint256 feePerGas = _maxFeePerGas < runtimeFeePerGas ? _maxFeePerGas : runtimeFeePerGas;
-    uint256 effectiveFee = feePerGas * _gas;
+    uint256 effectiveFee = (feePerGas * _gas * _baseFeeRate) / 1e18;
 
     assertEq(token.balanceOf(from), prevBalanceFrom - _value - effectiveFee);
 

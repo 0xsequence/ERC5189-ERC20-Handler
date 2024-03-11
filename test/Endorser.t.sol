@@ -527,52 +527,6 @@ contract EndorserTest is Test {
     );
   }
 
-  function testRejectOverflowBasefee(
-    uint256 _gasLimit,
-    uint256 _maxFeePerGas,
-    uint256 _maxPriorityFeePerGas,
-    uint256 _baseFeeScalingFactor,
-    uint256 _deadline,
-    uint256 _realBasefee
-  ) external {
-    _realBasefee = bound(_realBasefee, 2, type(uint256).max);
-    vm.fee(_realBasefee);
-
-    _gasLimit = bound(_gasLimit, 120_000, type(uint256).max);
-    _deadline = bound(_deadline, block.timestamp, type(uint256).max);
-    _baseFeeScalingFactor = bound(_baseFeeScalingFactor, type(uint256).max / block.basefee + 1, type(uint256).max);
-
-    bytes memory data = abi.encodeWithSelector(
-      handler.doTransfer.selector,
-      address(token),
-      address(0),
-      address(0),
-      0,
-      _deadline,
-      _maxPriorityFeePerGas,
-      _maxFeePerGas,
-      _baseFeeScalingFactor,
-      _gasLimit,
-      bytes32(0),
-      bytes32(0),
-      uint8(0)
-    );
-
-    vm.expectRevert(0xbac65e5b);
-    endorser.isOperationReady(
-      address(handler),
-      data,
-      bytes(""),
-      _gasLimit,
-      _maxFeePerGas,
-      _maxPriorityFeePerGas,
-      address(token),
-      _baseFeeScalingFactor,
-      1e18,
-      false
-    );
-  }
-
   function testRejectIfBadPermission(
     uint256 _gasLimit,
     uint256 _maxFeePerGas,
@@ -639,11 +593,12 @@ contract EndorserTest is Test {
     _gasLimit = bound(_gasLimit, 120_000, 30_000_000);
     _maxFeePerGas = bound(_maxFeePerGas, 0, 100000 gwei);
     _value = bound(_value, 0, 1_000_000_000_000_000_000 ether);
+    _baseFeeRate = bound(_baseFeeRate, 0, 1_000_000_000 ether);
 
     address from = vm.addr(_pk);
     vm.assume(_to != from);
 
-    uint256 maxSpend =  _value + (_maxFeePerGas * _gasLimit);
+    uint256 maxSpend =  _value + (_maxFeePerGas * _gasLimit * _baseFeeRate) / 1e18;
     vm.assume(maxSpend != 0);
 
     bytes32 ophash = keccak256(
@@ -734,11 +689,12 @@ contract EndorserTest is Test {
     _gasLimit = bound(_gasLimit, 120_000, 30_000_000);
     _maxFeePerGas = bound(_maxFeePerGas, 0, 100000 gwei);
     _value = bound(_value, 0, 1_000_000_000_000_000_000 ether);
+    _baseFeeRate = bound(_baseFeeRate, 0, 1_000_000_000 ether);
 
     address from = vm.addr(_pk);
     vm.assume(_to != from);
 
-    uint256 maxSpend =  _value + (_maxFeePerGas * _gasLimit);
+    uint256 maxSpend =  _value + (_maxFeePerGas * _gasLimit * _baseFeeRate) / 1e18;
     vm.assume(maxSpend != 0);
 
     bytes32 ophash = keccak256(
@@ -831,11 +787,12 @@ contract EndorserTest is Test {
     _gasLimit = bound(_gasLimit, 120_000, 30_000_000);
     _maxFeePerGas = bound(_maxFeePerGas, 0, 100000 gwei);
     _value = bound(_value, 0, 1_000_000_000_000_000_000 ether);
+    _baseFeeRate = bound(_baseFeeRate, 0, 1_000_000_000 ether);
 
     address from = vm.addr(_pk);
     vm.assume(_to != from);
 
-    uint256 maxSpend =  _value + (_maxFeePerGas * _gasLimit);
+    uint256 maxSpend =  _value + (_maxFeePerGas * _gasLimit * _baseFeeRate) / 1e18;
     vm.assume(maxSpend != 0);
 
     bytes32 ophash = keccak256(

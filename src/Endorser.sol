@@ -65,7 +65,7 @@ contract Endorser is IEndorser, Ownable {
   function isOperationReady(
     address _entrypoint,
     bytes calldata _data,
-    bytes calldata,
+    bytes calldata _endorserCalldata,
     uint256 _gasLimit,
     uint256 _maxFeePerGas,
     uint256 _maxPriorityFeePerGas,
@@ -84,7 +84,12 @@ contract Endorser is IEndorser, Ownable {
 
     ERC20Config memory cfg = configForToken[_feeToken];
     if (cfg.minGas == 0) {
-      revert("unsupported token: ".c(_feeToken));
+      if (_hasUntrustedContext) {
+        // TODO: This is incorrect, it should simulate everything instead
+        cfg.minGas = 150_000;
+      } else {
+        revert("unsupported token: ".c(_feeToken));
+      }
     }
 
     if (cfg.minGas > _gasLimit) {
@@ -93,10 +98,6 @@ contract Endorser is IEndorser, Ownable {
 
     if (_baseFeeNormalizationFactor != 1e18) {
       revert("normalization factor != 1e18: ".c(_baseFeeNormalizationFactor));
-    }
-
-    if (_hasUntrustedContext) {
-      revert("untrusted context not needed");
     }
 
     // Decode the data
@@ -183,12 +184,11 @@ contract Endorser is IEndorser, Ownable {
     // Notice that all units are in ERC20 except block.basefee
     // NOTICE this will catch any overflows
     // but the fee won't directly be used.
-    uint256 blockBaseFee = block.basefee.mulWad(baseFeeRate);
-    uint256 feePerGas = maxFeePerGas.min(blockBaseFee + priorityFee);
-    uint256 fee = feePerGas * gas;
+    uint256 feePerGas = maxFeePerGas.min(block.basefee + priorityFee);
+    uint256 fee = (feePerGas * gas).mulWad(baseFeeRate);
     fee = fee;
 
-    uint256 maxFee = maxFeePerGas * gas;
+    uint256 maxFee = (maxFeePerGas * gas).mulWad(baseFeeRate);
 
     // See if the signature is valid, easier way to do this
     // is just to call `permit`, if it reverts we know it's invalid
@@ -203,21 +203,39 @@ contract Endorser is IEndorser, Ownable {
       s
     );
 
-    // The user should have enough balance to pay for the fee and the value
-    uint256 balance = ERC20(token).balanceOf(from);
-    if (balance < combined) {
-      revert("insufficient balance: ".c(balance).c(" < ".s()).c(combined));
-    }
+    DependencyCarrier memory dc;
 
-    // Now we need to build the dependency graph, as a summary we depend on:
-    // - the user balance slot
-    // - the user nonce slot
-    // - (if the deadline is < 2 ** 64 -1) the timestamp of the deadline
-    if (address(cfg.slotMap) == address(0)) {
-      revert("slot map not found: ".c(token));
-    }
+    if (_hasUntrustedContext) {
+      emit UntrustedStarted();
 
-    DependencyCarrier memory dc = cfg.slotMap.getSlotsDependencies(token, from, to, cfg.slotMapData);
+      // Doing some fetches will automatically add the dependencies
+      ERC20(token).nonces(from);
+
+      uint256 balance = ERC20(token).balanceOf(from);
+      if (balance < combined) {
+        revert("insufficient balance: ".c(balance).c(" < ".s()).c(combined));
+      }
+
+      emit UntrustedEnded();
+
+      dc = LibDependencyCarrier.create();
+    } else {
+      // The user should have enough balance to pay for the fee and the value
+      uint256 balance = ERC20(token).balanceOf(from);
+      if (balance < combined) {
+        revert("insufficient balance: ".c(balance).c(" < ".s()).c(combined));
+      }
+
+      // Now we need to build the dependency graph, as a summary we depend on:
+      // - the user balance slot
+      // - the user nonce slot
+      // - (if the deadline is < 2 ** 64 -1) the timestamp of the deadline
+      if (address(cfg.slotMap) == address(0)) {
+        revert("slot map not found: ".c(token));
+      }
+
+      dc = cfg.slotMap.getSlotsDependencies(token, from, to, cfg.slotMapData);
+    }
 
     // Add the deadline (if it's not infinite)
     if (deadline < type(uint64).max) {
