@@ -42,9 +42,8 @@ contract EndorserTest is Test {
     uint256 _maxFeePerGas,
     uint256 _maxPriorityFeePerGas,
     address _feeToken,
-    uint256 _baseFeeScalingFactor,
-    uint256 _baseFeeNormalizationFactor,
-    bool _hasUntrustedContext
+    uint256 _feeScalingFactor,
+    uint256 _baseFeeNormalizationFactor
   ) external {
     endorser.setHandler(address(_entrypoint), false);
     vm.expectRevert("invalid handler: ".c(_entrypoint).b());
@@ -57,9 +56,8 @@ contract EndorserTest is Test {
     op.maxFeePerGas = _maxFeePerGas;
     op.maxPriorityFeePerGas = _maxPriorityFeePerGas;
     op.feeToken = _feeToken;
-    op.feeScalingFactor = _baseFeeScalingFactor;
+    op.feeScalingFactor = _feeScalingFactor;
     op.feeNormalizationFactor = _baseFeeNormalizationFactor;
-    op.hasUntrustedContext = _hasUntrustedContext;
 
     endorser.isOperationReady(op);
   }
@@ -70,9 +68,8 @@ contract EndorserTest is Test {
     uint256 _maxFeePerGas,
     uint256 _maxPriorityFeePerGas,
     address _feeToken,
-    uint256 _baseFeeScalingFactor,
-    uint256 _baseFeeNormalizationFactor,
-    bool _hasUntrustedContext
+    uint256 _feeScalingFactor,
+    uint256 _baseFeeNormalizationFactor
   ) external {
     vm.assume(_feeToken != address(token));
     vm.expectRevert("unsupported token: ".c(_feeToken).b());
@@ -84,9 +81,8 @@ contract EndorserTest is Test {
     op.maxFeePerGas = _maxFeePerGas;
     op.maxPriorityFeePerGas = _maxPriorityFeePerGas;
     op.feeToken = _feeToken;
-    op.feeScalingFactor = _baseFeeScalingFactor;
+    op.feeScalingFactor = _feeScalingFactor;
     op.feeNormalizationFactor = _baseFeeNormalizationFactor;
-    op.hasUntrustedContext = _hasUntrustedContext;
 
     endorser.isOperationReady(op);
   }
@@ -96,9 +92,8 @@ contract EndorserTest is Test {
     uint256 _gasLimit,
     uint256 _maxFeePerGas,
     uint256 _maxPriorityFeePerGas,
-    uint256 _baseFeeScalingFactor,
-    uint256 _baseFeeNormalizationFactor,
-    bool _hasUntrustedContext
+    uint256 _feeScalingFactor,
+    uint256 _baseFeeNormalizationFactor
   ) external {
     _gasLimit = bound(_gasLimit, 0, 119_999);
     vm.expectRevert("insufficient gas: ".c(_gasLimit).c(" < 120000".s()).b());
@@ -110,9 +105,8 @@ contract EndorserTest is Test {
     op.maxFeePerGas = _maxFeePerGas;
     op.maxPriorityFeePerGas = _maxPriorityFeePerGas;
     op.feeToken = address(token);
-    op.feeScalingFactor = _baseFeeScalingFactor;
+    op.feeScalingFactor = _feeScalingFactor;
     op.feeNormalizationFactor = _baseFeeNormalizationFactor;
-    op.hasUntrustedContext = _hasUntrustedContext;
 
     endorser.isOperationReady(op);
   }
@@ -122,13 +116,12 @@ contract EndorserTest is Test {
     uint256 _gasLimit,
     uint256 _maxFeePerGas,
     uint256 _maxPriorityFeePerGas,
-    uint256 _baseFeeScalingFactor,
-    uint256 _baseFeeNormalizationFactor,
-    bool _hasUntrustedContext
+    uint256 _feeScalingFactor,
+    uint256 _baseFeeNormalizationFactor
   ) external {
     vm.assume(_baseFeeNormalizationFactor != 1e18);
     _gasLimit = bound(_gasLimit, 120_000, type(uint256).max);
-    vm.expectRevert("normalization factor != 1e18: ".c(_baseFeeNormalizationFactor).b());
+    vm.expectRevert("Normalization factor mismatch: ".c(1e18).c(" != ".s()).c(_baseFeeNormalizationFactor).b());
 
     IEndorser.Operation memory op;
     op.entrypoint = address(handler);
@@ -137,9 +130,8 @@ contract EndorserTest is Test {
     op.maxFeePerGas = _maxFeePerGas;
     op.maxPriorityFeePerGas = _maxPriorityFeePerGas;
     op.feeToken = address(token);
-    op.feeScalingFactor = _baseFeeScalingFactor;
+    op.feeScalingFactor = _feeScalingFactor;
     op.feeNormalizationFactor = _baseFeeNormalizationFactor;
-    op.hasUntrustedContext = _hasUntrustedContext;
 
     endorser.isOperationReady(op);
   }
@@ -149,7 +141,7 @@ contract EndorserTest is Test {
     uint256 _gasLimit,
     uint256 _maxFeePerGas,
     uint256 _maxPriorityFeePerGas,
-    uint256 _baseFeeScalingFactor
+    uint256 _feeScalingFactor
   ) external {
     _gasLimit = bound(_gasLimit, 120_000, type(uint256).max);
     vm.expectRevert("untrusted context not needed");
@@ -161,7 +153,7 @@ contract EndorserTest is Test {
     op.maxFeePerGas = _maxFeePerGas;
     op.maxPriorityFeePerGas = _maxPriorityFeePerGas;
     op.feeToken = address(token);
-    op.feeScalingFactor = _baseFeeScalingFactor;
+    op.feeScalingFactor = _feeScalingFactor;
     op.feeNormalizationFactor = 1e18;
     op.hasUntrustedContext = true;
 
@@ -174,7 +166,7 @@ contract EndorserTest is Test {
     uint256 _gasLimit,
     uint256 _maxFeePerGas,
     uint256 _maxPriorityFeePerGas,
-    uint256 _baseFeeScalingFactor
+    uint256 _feeScalingFactor
   ) external {
     vm.assume(_badSelector != handler.doTransfer.selector);
     _gasLimit = bound(_gasLimit, 120_000, type(uint256).max);
@@ -192,7 +184,7 @@ contract EndorserTest is Test {
     op.maxFeePerGas = _maxFeePerGas;
     op.maxPriorityFeePerGas = _maxPriorityFeePerGas;
     op.feeToken = address(token);
-    op.feeScalingFactor = _baseFeeScalingFactor;
+    op.feeScalingFactor = _feeScalingFactor;
     op.feeNormalizationFactor = 1e18;
     op.hasUntrustedContext = false;
 
@@ -204,7 +196,7 @@ contract EndorserTest is Test {
     uint256 _gasLimit,
     uint256 _maxFeePerGas,
     uint256 _maxPriorityFeePerGas,
-    uint256 _baseFeeScalingFactor
+    uint256 _feeScalingFactor
   ) external {
     vm.assume(_badFeeToken != address(token));
 
@@ -227,7 +219,7 @@ contract EndorserTest is Test {
     );
 
     vm.expectRevert(
-      "invalid inner token: "
+      "Fee token mismatch: "
         .c(_badFeeToken)
         .c(" != ".s())
         .c(address(token))
@@ -241,7 +233,7 @@ contract EndorserTest is Test {
     op.maxFeePerGas = _maxFeePerGas;
     op.maxPriorityFeePerGas = _maxPriorityFeePerGas;
     op.feeToken = address(token);
-    op.feeScalingFactor = _baseFeeScalingFactor;
+    op.feeScalingFactor = _feeScalingFactor;
     op.feeNormalizationFactor = 1e18;
     op.hasUntrustedContext = false;
 
@@ -252,9 +244,11 @@ contract EndorserTest is Test {
     uint256 _gasLimit,
     uint256 _maxFeePerGas,
     uint256 _maxPriorityFeePerGas,
-    uint256 _baseFeeScalingFactor
+    uint256 _feeScalingFactor
   ) external {
     _gasLimit = bound(_gasLimit, 120_000, type(uint256).max);
+    _maxFeePerGas = bound(_maxFeePerGas, 0, 100000 gwei);
+    _feeScalingFactor = bound(_feeScalingFactor, 0, 1_000_000_000 ether);
 
     bytes memory data = abi.encodeWithSelector(
       handler.doTransfer.selector,
@@ -263,10 +257,10 @@ contract EndorserTest is Test {
       address(token),
       0,
       0,
-      0,
-      0,
-      0,
-      0,
+      _maxPriorityFeePerGas,
+      _maxFeePerGas,
+      _feeScalingFactor,
+      _gasLimit,
       bytes32(0),
       bytes32(0),
       uint8(0)
@@ -281,7 +275,7 @@ contract EndorserTest is Test {
     op.maxFeePerGas = _maxFeePerGas;
     op.maxPriorityFeePerGas = _maxPriorityFeePerGas;
     op.feeToken = address(token);
-    op.feeScalingFactor = _baseFeeScalingFactor;
+    op.feeScalingFactor = _feeScalingFactor;
     op.feeNormalizationFactor = 1e18;
 
     endorser.isOperationReady(op);
@@ -291,7 +285,7 @@ contract EndorserTest is Test {
     uint256 _gasLimit,
     uint256 _maxFeePerGas,
     uint256 _maxPriorityFeePerGas,
-    uint256 _baseFeeScalingFactor,
+    uint256 _feeScalingFactor,
     uint256 _deadline
   ) external {
     _gasLimit = bound(_gasLimit, 120_000, type(uint256).max);
@@ -304,10 +298,10 @@ contract EndorserTest is Test {
       address(0),
       0,
       _deadline,
-      0,
-      0,
-      0,
-      0,
+      _maxPriorityFeePerGas,
+      _maxFeePerGas,
+      _feeScalingFactor,
+      _gasLimit,
       bytes32(0),
       bytes32(0),
       uint8(0)
@@ -327,7 +321,7 @@ contract EndorserTest is Test {
     op.maxFeePerGas = _maxFeePerGas;
     op.maxPriorityFeePerGas = _maxPriorityFeePerGas;
     op.feeToken = address(token);
-    op.feeScalingFactor = _baseFeeScalingFactor;
+    op.feeScalingFactor = _feeScalingFactor;
     op.feeNormalizationFactor = 1e18;
 
     endorser.isOperationReady(op);
@@ -337,13 +331,13 @@ contract EndorserTest is Test {
     uint256 _gasLimit,
     uint256 _maxFeePerGas,
     uint256 _maxPriorityFeePerGas,
-    uint256 _baseFeeScalingFactor,
+    uint256 _feeScalingFactor,
     uint256 _innerGas,
     uint256 _deadline
   ) external {
-    _gasLimit = bound(_gasLimit, 120_000, type(uint256).max);
+    _gasLimit = bound(_gasLimit, 120_000, type(uint256).max - 1);
     _deadline = bound(_deadline, block.timestamp, type(uint256).max);
-    vm.assume(_innerGas != _gasLimit);
+    _innerGas = bound(_innerGas, _gasLimit + 1, type(uint256).max);
 
     bytes memory data = abi.encodeWithSelector(
       handler.doTransfer.selector,
@@ -361,9 +355,9 @@ contract EndorserTest is Test {
       uint8(0)
     );
 
-    vm.expectRevert("invalid inner gas: "
+    vm.expectRevert("Inner gas limit exceeds operation gas limit: "
       .c(_innerGas)
-      .c(" != ".s())
+      .c(" > ".s())
       .c(_gasLimit)
       .b()
     );
@@ -375,7 +369,7 @@ contract EndorserTest is Test {
     op.maxFeePerGas = _maxFeePerGas;
     op.maxPriorityFeePerGas = _maxPriorityFeePerGas;
     op.feeToken = address(token);
-    op.feeScalingFactor = _baseFeeScalingFactor;
+    op.feeScalingFactor = _feeScalingFactor;
     op.feeNormalizationFactor = 1e18;
 
     endorser.isOperationReady(op);
@@ -385,14 +379,14 @@ contract EndorserTest is Test {
     uint256 _gasLimit,
     uint256 _maxFeePerGas,
     uint256 _maxPriorityFeePerGas,
-    uint256 _baseFeeScalingFactor,
+    uint256 _feeScalingFactor,
     uint256 _deadline,
     uint256 _innerMaxFeePerGas
   ) external {
-    vm.assume(_innerMaxFeePerGas != _maxFeePerGas);
-
     _gasLimit = bound(_gasLimit, 120_000, type(uint256).max);
     _deadline = bound(_deadline, block.timestamp, type(uint256).max);
+    _maxFeePerGas = bound(_maxFeePerGas, 1, type(uint256).max);
+    _innerMaxFeePerGas = bound(_innerMaxFeePerGas, 0, _maxFeePerGas - 1);
 
     bytes memory data = abi.encodeWithSelector(
       handler.doTransfer.selector,
@@ -410,9 +404,9 @@ contract EndorserTest is Test {
       uint8(0)
     );
 
-    vm.expectRevert("invalid inner max fee per gas: "
+    vm.expectRevert("Max fee per gas is less than operation max fee per gas: "
       .c(_innerMaxFeePerGas)
-      .c(" != ".s())
+      .c(" < ".s())
       .c(_maxFeePerGas)
       .b()
     );
@@ -424,7 +418,7 @@ contract EndorserTest is Test {
     op.maxFeePerGas = _maxFeePerGas;
     op.maxPriorityFeePerGas = _maxPriorityFeePerGas;
     op.feeToken = address(token);
-    op.feeScalingFactor = _baseFeeScalingFactor;
+    op.feeScalingFactor = _feeScalingFactor;
     op.feeNormalizationFactor = 1e18;
 
     endorser.isOperationReady(op);
@@ -434,12 +428,12 @@ contract EndorserTest is Test {
     uint256 _gasLimit,
     uint256 _maxFeePerGas,
     uint256 _maxPriorityFeePerGas,
-    uint256 _baseFeeScalingFactor,
+    uint256 _feeScalingFactor,
     uint256 _deadline,
     uint256 _innerPriorityFee
   ) external {
-    vm.assume(_innerPriorityFee != _maxPriorityFeePerGas);
-
+    _maxPriorityFeePerGas = bound(_maxPriorityFeePerGas, 1, type(uint256).max);
+    _innerPriorityFee = bound(_innerPriorityFee, 0, _maxPriorityFeePerGas - 1);
     _gasLimit = bound(_gasLimit, 120_000, type(uint256).max);
     _deadline = bound(_deadline, block.timestamp, type(uint256).max);
 
@@ -459,9 +453,9 @@ contract EndorserTest is Test {
       uint8(0)
     );
 
-    vm.expectRevert("invalid inner priority fee: "
+    vm.expectRevert("Max priority fee per gas is less than operation max priority fee per gas: "
       .c(_innerPriorityFee)
-      .c(" != ".s())
+      .c(" < ".s())
       .c(_maxPriorityFeePerGas)
       .b()
     );
@@ -473,21 +467,21 @@ contract EndorserTest is Test {
     op.maxFeePerGas = _maxFeePerGas;
     op.maxPriorityFeePerGas = _maxPriorityFeePerGas;
     op.feeToken = address(token);
-    op.feeScalingFactor = _baseFeeScalingFactor;
+    op.feeScalingFactor = _feeScalingFactor;
     op.feeNormalizationFactor = 1e18;
 
     endorser.isOperationReady(op);
   }
 
-  function testRejectBadInnerBasefeeScaling(
+  function testRejectBadInnerScaling(
     uint256 _gasLimit,
     uint256 _maxFeePerGas,
     uint256 _maxPriorityFeePerGas,
-    uint256 _baseFeeScalingFactor,
+    uint256 _feeScalingFactor,
     uint256 _deadline,
-    uint256 _innerBaseFee
+    uint256 _innerScalingFactor
   ) external {
-    vm.assume(_innerBaseFee != _baseFeeScalingFactor);
+    vm.assume(_innerScalingFactor != _feeScalingFactor);
 
     _gasLimit = bound(_gasLimit, 120_000, type(uint256).max);
     _deadline = bound(_deadline, block.timestamp, type(uint256).max);
@@ -501,17 +495,17 @@ contract EndorserTest is Test {
       _deadline,
       _maxPriorityFeePerGas,
       _maxFeePerGas,
-      _innerBaseFee,
+      _innerScalingFactor,
       _gasLimit,
       bytes32(0),
       bytes32(0),
       uint8(0)
     );
 
-    vm.expectRevert("invalid inner base fee: "
-      .c(_innerBaseFee)
+    vm.expectRevert("Scaling factor mismatch: "
+      .c(_innerScalingFactor)
       .c(" != ".s())
-      .c(_baseFeeScalingFactor)
+      .c(_feeScalingFactor)
       .b()
     );
 
@@ -522,7 +516,7 @@ contract EndorserTest is Test {
     op.maxFeePerGas = _maxFeePerGas;
     op.maxPriorityFeePerGas = _maxPriorityFeePerGas;
     op.feeToken = address(token);
-    op.feeScalingFactor = _baseFeeScalingFactor;
+    op.feeScalingFactor = _feeScalingFactor;
     op.feeNormalizationFactor = 1e18;
 
     endorser.isOperationReady(op);
@@ -532,7 +526,7 @@ contract EndorserTest is Test {
     uint256 _gasLimit,
     uint256 _maxFeePerGas,
     uint256 _maxPriorityFeePerGas,
-    uint256 _baseFeeScalingFactor,
+    uint256 _feeScalingFactor,
     uint256 _deadline,
     uint256 _realBasefee,
     bytes32 _r,
@@ -544,7 +538,7 @@ contract EndorserTest is Test {
 
     _gasLimit = bound(_gasLimit, 120_000, type(uint256).max);
     _deadline = bound(_deadline, block.timestamp, type(uint256).max);
-    _baseFeeScalingFactor = bound(_baseFeeScalingFactor, 1, type(uint64).max);
+    _feeScalingFactor = bound(_feeScalingFactor, 1, type(uint64).max);
 
     bytes memory data = abi.encodeWithSelector(
       handler.doTransfer.selector,
@@ -555,7 +549,7 @@ contract EndorserTest is Test {
       _deadline,
       _maxPriorityFeePerGas,
       _maxFeePerGas,
-      _baseFeeScalingFactor,
+      _feeScalingFactor,
       _gasLimit,
       bytes32(_r),
       bytes32(_s),
@@ -571,7 +565,7 @@ contract EndorserTest is Test {
     op.maxFeePerGas = _maxFeePerGas;
     op.maxPriorityFeePerGas = _maxPriorityFeePerGas;
     op.feeToken = address(token);
-    op.feeScalingFactor = _baseFeeScalingFactor;
+    op.feeScalingFactor = _feeScalingFactor;
     op.feeNormalizationFactor = 1e18;
 
     endorser.isOperationReady(op);

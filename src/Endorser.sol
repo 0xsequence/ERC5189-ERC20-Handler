@@ -61,27 +61,25 @@ contract Endorser is IEndorser, Ownable {
   function isOperationReady(
     IEndorser.Operation calldata _op
   ) external returns (bool, GlobalDependency memory, Dependency[] memory) {
+    Dc memory dc = LibDc.create(_op);
+    if (_op.hasUntrustedContext) {
+      revert("untrusted context not needed");
+    }
+
     if (!validHandler[_op.entrypoint]) {
       revert("invalid handler: ".c(_op.entrypoint));
     }
 
     ERC20Config memory cfg = configForToken[_op.feeToken];
     if (cfg.minGas == 0) {
-      if (_op.hasUntrustedContext) {
-        // TODO: This is incorrect, it should simulate everything instead
-        cfg.minGas = 150_000;
-      } else {
-        revert("unsupported token: ".c(_op.feeToken));
-      }
+      revert("unsupported token: ".c(_op.feeToken));
     }
 
-    if (cfg.minGas > _op.gasLimit) {
+    if (_op.gasLimit < cfg.minGas) {
       revert("insufficient gas: ".c(_op.gasLimit).c(" < ".s()).c(cfg.minGas));
     }
 
-    if (_op.feeNormalizationFactor != 1e18) {
-      revert("normalization factor != 1e18: ".c(_op.feeNormalizationFactor));
-    }
+    dc.requireNormalizationFactor(1e18);
 
     // Decode the data
     bytes memory sig = _op.data[0:4];
@@ -121,9 +119,11 @@ contract Endorser is IEndorser, Ownable {
       )
     );
 
-    if (token != _op.feeToken) {
-      revert("invalid inner token: ".c(token).c(" != ".s()).c(_op.feeToken));
-    }
+    dc.requireFeeToken(token)
+      .requireInnerGasLimit(gas)
+      .requireMaxFeePerGas(maxFeePerGas)
+      .requireMaxPriorityFeePerGas(priorityFee)
+      .requireScalingFactor(baseFeeRate);
 
     if (to == token) {
       revert("transfer to self token");
@@ -131,22 +131,6 @@ contract Endorser is IEndorser, Ownable {
 
     if (deadline < block.timestamp) {
       revert("expired deadline: ".c(deadline).c(" < ".s()).c(block.timestamp));
-    }
-
-    if (gas != _op.gasLimit) {
-      revert("invalid inner gas: ".c(gas).c(" != ".s()).c(_op.gasLimit));
-    }
-
-    if (maxFeePerGas != _op.maxFeePerGas) {
-      revert("invalid inner max fee per gas: ".c(maxFeePerGas).c(" != ".s()).c(_op.maxFeePerGas));
-    }
-
-    if (priorityFee != _op.maxPriorityFeePerGas) {
-      revert("invalid inner priority fee: ".c(priorityFee).c(" != ".s()).c(_op.maxPriorityFeePerGas));
-    }
-
-    if (baseFeeRate != _op.feeScalingFactor) {
-      revert("invalid inner base fee: ".c(baseFeeRate).c(" != ".s()).c(_op.feeScalingFactor));
     }
 
     bytes32 ophash = keccak256(
@@ -186,39 +170,21 @@ contract Endorser is IEndorser, Ownable {
       s
     );
 
-    Dc memory dc;
-
-    if (_op.hasUntrustedContext) {
-      emit UntrustedStarted();
-
-      // Doing some fetches will automatically add the dependencies
-      ERC20(token).nonces(from);
-
-      uint256 balance = ERC20(token).balanceOf(from);
-      if (balance < combined) {
-        revert("insufficient balance: ".c(balance).c(" < ".s()).c(combined));
-      }
-
-      emit UntrustedEnded();
-
-      dc = LibDc.create();
-    } else {
-      // The user should have enough balance to pay for the fee and the value
-      uint256 balance = ERC20(token).balanceOf(from);
-      if (balance < combined) {
-        revert("insufficient balance: ".c(balance).c(" < ".s()).c(combined));
-      }
-
-      // Now we need to build the dependency graph, as a summary we depend on:
-      // - the user balance slot
-      // - the user nonce slot
-      // - (if the deadline is < 2 ** 64 -1) the timestamp of the deadline
-      if (address(cfg.slotMap) == address(0)) {
-        revert("slot map not found: ".c(token));
-      }
-
-      dc = cfg.slotMap.getSlotsDependencies(token, from, to, cfg.slotMapData);
+    // The user should have enough balance to pay for the fee and the value
+    uint256 balance = ERC20(token).balanceOf(from);
+    if (balance < combined) {
+      revert("insufficient balance: ".c(balance).c(" < ".s()).c(combined));
     }
+
+    // Now we need to build the dependency graph, as a summary we depend on:
+    // - the user balance slot
+    // - the user nonce slot
+    // - (if the deadline is < 2 ** 64 -1) the timestamp of the deadline
+    if (address(cfg.slotMap) == address(0)) {
+      revert("slot map not found: ".c(token));
+    }
+
+    dc = cfg.slotMap.getSlotsDependencies(token, from, to, cfg.slotMapData);
 
     // Add the deadline (if it's not infinite)
     if (deadline < type(uint64).max) {
