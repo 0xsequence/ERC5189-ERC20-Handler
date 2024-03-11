@@ -1,9 +1,9 @@
 [submodule "lib/forge-std"]
 	path = lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
-[submodule "lib/erc5189-libs"]
-	path = lib/erc5189-libs
-	url = https://github.com/0xsequence/erc5189-libs
 [submodule "lib/solady"]
 	path = lib/solady
 	url = https://github.com/vectorized/solady
+[submodule "lib/erc5189-libs"]
+	path = lib/erc5189-libs
+	url = https://github.com/0xsequence/erc5189-libs
