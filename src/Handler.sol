@@ -19,7 +19,7 @@ contract Handler {
     uint256 _deadline,
     uint256 _priorityFee,
     uint256 _maxFeePerGas,
-    uint256 _baseFeeRate,
+    uint256 _feeRate,
     uint256 _gas,
     bytes32 _r,
     bytes32 _s,
@@ -39,7 +39,7 @@ contract Handler {
           _deadline,
           _maxFeePerGas,
           _priorityFee,
-          _baseFeeRate,
+          _feeRate,
           _gas
         )
       );
@@ -48,7 +48,7 @@ contract Handler {
       // Notice that all units are in ERC20 except block.basefee
       uint256 feePerGas = _maxFeePerGas.min(block.basefee + _priorityFee);
 
-      uint256 gr = _gas * _baseFeeRate;
+      uint256 gr = _gas * _feeRate;
       uint256 fee = gr.rawMulWad(feePerGas);
       uint256 maxFee = gr.rawMulWad(_maxFeePerGas);
 

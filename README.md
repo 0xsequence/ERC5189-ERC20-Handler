@@ -1,66 +1,42 @@
-## Foundry
+## ERC5189 for ERC20 Tokens
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+This is a simple implementation of an ERC-5189 handler for ERC-20 tokens. It allows the creation of ERC-5189 operations for any ERC-20 token that supports the `permit` extension.
 
-Foundry consists of:
+### Goal
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+The goal of this project is to demonstrate the flexibility of ERC-5189, as it can be integrated with any ERC-20 token even if the token wasn't designed with 5189 in mind.
 
-## Documentation
+It has two main components:
 
-https://book.getfoundry.sh/
+### Handler
 
-## Usage
+The handler is a simple contract that takes an ERC20 permit and executes a `transferFrom` to perform a transfer, and another `transferFrom` to `tx.origin` to pay for the fee. It re-uses the `permit` signature to allow for a single signature to perform all actions.
 
-### Build
+It takes a `maxFeePerGas` and a `priorityFeePerGas` to calculate the fee to be paid, similar to the EIP-1559 fee structure. It also takes a `feeRate` to convert the resulting fee (in ETH) to the token to be paid.
 
-```shell
-$ forge build
-```
+### Endorser
 
-### Test
+The endorser is a simple ERC-5189 endorser that validates operations that use the handler. It checks for the following conditions:
 
-```shell
-$ forge test
-```
+- The operation has enough gas limit.
+- The operation uses a good handler.
+- The token is supported (by the endorser).
+- The handler calldata is correctly formatted.
+- The 5189 fee token is the same as the token to be transferred.
+- The maxFeePerGas is correct.
+- The priorityFeePerGas is correct.
+- The feeRate is correct.
+- The deadline is not expired.
+- The signature for the `permit` is correct.
+- The user has enough balance to pay for the fee and the transfer.
 
-### Format
+If all conditions are met, the endorser will return `readiness = true`, and the operation can be executed. The endorser also returns a list of dependencies that may trigger a re-evaluation of the operation:
 
-```shell
-$ forge fmt
-```
+- The storage slot with the balance of the sender.
+- The storage slot with the nonce of the sender.
 
-### Gas Snapshots
+### Limitations
 
-```shell
-$ forge snapshot
-```
+a) The endorser must be manually configured for each token; for this reason, each endorser has an owner that can set the correct parameters. The handler does not enforce the use of a specific endorser, so multiple endorsers can be used if needed.
 
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+b) The endorser has no control over possible "blacklists" or any other additional restrictions that ERC20 tokens may impose. To utilize the handler with one of these tokens, a custom endorser must be created that accounts for these edge cases.
