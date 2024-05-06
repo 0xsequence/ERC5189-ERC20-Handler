@@ -194,5 +194,7 @@ contract Endorser is IEndorser, Ownable {
     return dc.build();
   }
 
-  function simulationSettings() external view returns (Replacement[] memory replacements) { }
+  function simulationSettings(
+    IEndorser.Operation calldata _op
+  ) external view returns (Replacement[] memory replacements) { }
 }
