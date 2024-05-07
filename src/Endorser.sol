@@ -29,7 +29,7 @@ contract Endorser is IEndorser, Ownable {
     address indexed token,
     address slotMap,
     bytes slotMapData,
-    uint256 minGas
+    uint256 minGas // Notice minGas must also cover handler overhead
   );
 
   constructor (address _owner) {
