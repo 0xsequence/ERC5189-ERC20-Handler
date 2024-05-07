@@ -134,18 +134,16 @@ contract Endorser is IEndorser, Ownable {
     }
 
     uint256 ophash256 = uint256(
-      keccak256(
-        abi.encodePacked(
-            token,
-            from,
-            to,
-            value,
-            deadline,
-            maxFeePerGas,
-            priorityFee,
-            baseFeeRate,
-            gas
-          )
+      Handler(_op.entrypoint).getOpHash(
+          token,
+          from,
+          to,
+          value,
+          deadline,
+          maxFeePerGas,
+          priorityFee,
+          baseFeeRate,
+          gas
       )
     );
 

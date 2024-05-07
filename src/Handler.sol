@@ -30,18 +30,16 @@ contract Handler {
         revert Expired(_deadline);
       }
 
-      bytes32 ophash = keccak256(
-        abi.encodePacked(
-          _token,
-          _from,
-          _to,
-          _value,
-          _deadline,
-          _maxFeePerGas,
-          _priorityFee,
-          _feeRate,
-          _gas
-        )
+      bytes32 ophash = getOpHash(
+        _token,
+        _from,
+        _to,
+        _value,
+        _deadline,
+        _priorityFee,
+        _maxFeePerGas,
+        _feeRate,
+        _gas
       );
 
       // Compute how much we will need to pay in fees.
@@ -80,5 +78,31 @@ contract Handler {
         fee
       );
     }
+  }
+
+  function getOpHash(
+      address _token,
+      address _from,
+      address _to,
+      uint256 _value,
+      uint256 _deadline,
+      uint256 _priorityFee,
+      uint256 _maxFeePerGas,
+      uint256 _feeRate,
+      uint256 _gas
+  ) public pure returns (bytes32) {
+    return keccak256(
+      abi.encodePacked(
+        _token,
+        _from,
+        _to,
+        _value,
+        _deadline,
+        _maxFeePerGas,
+        _priorityFee,
+        _feeRate,
+        _gas
+      )
+    );
   }
 }
