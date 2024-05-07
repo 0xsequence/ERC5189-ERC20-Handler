@@ -7,3 +7,6 @@
 [submodule "lib/erc5189-libs"]
 	path = lib/erc5189-libs
 	url = https://github.com/0xsequence/erc5189-libs
+[submodule "lib/erc2470-libs"]
+	path = lib/erc2470-libs
+	url = https://github.com/ScreamingHawk/erc2470-libs
