@@ -12,7 +12,7 @@ It has two main components:
 
 The handler is a simple contract that takes an ERC20 permit and executes a `transferFrom` to perform a transfer, and another `transferFrom` to `tx.origin` to pay for the fee. It re-uses the `permit` signature to allow for a single signature to perform all actions.
 
-It takes a `maxFeePerGas` and a `priorityFeePerGas` to calculate the fee to be paid, similar to the EIP-1559 fee structure. It also takes a `feeRate` to convert the resulting fee (in ETH) to the token to be paid.
+It takes a `maxFeePerGas` and a `priorityFeePerGas` to calculate the fee to be paid, similar to the EIP-1559 fee structure. It also takes a `feeRate` to convert the resulting fee (in the native token) to the token to be paid.
 
 ### Endorser
 

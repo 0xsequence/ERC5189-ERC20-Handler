@@ -584,6 +584,8 @@ contract EndorserTest is Test {
   ) external {
     _pk = _pk.boundPk();
 
+    vm.assume(_to != address(token));
+
     _deadline = bound(_deadline, block.timestamp, type(uint256).max);
     _gasLimit = bound(_gasLimit, 120_000, 30_000_000);
     _maxFeePerGas = bound(_maxFeePerGas, 0, 100000 gwei);
@@ -596,18 +598,16 @@ contract EndorserTest is Test {
     uint256 maxSpend =  _value + (_maxFeePerGas * _gasLimit * _baseFeeRate) / 1e18;
     vm.assume(maxSpend != 0);
 
-    bytes32 ophash = keccak256(
-      abi.encodePacked(
-        address(token),
-        from,
-        _to,
-        _value,
-        _deadline,
-        _maxFeePerGas,
-        _priorityFee,
-        _baseFeeRate,
-        _gasLimit
-      )
+    bytes32 ophash = handler.getOpHash(
+      address(token),
+      from,
+      _to,
+      _value,
+      _deadline,
+      _maxFeePerGas,
+      _priorityFee,
+      _baseFeeRate,
+      _gasLimit
     );
 
     bytes32 digest = keccak256(abi.encodePacked(
@@ -679,6 +679,8 @@ contract EndorserTest is Test {
   ) external {
     _pk = _pk.boundPk();
 
+    vm.assume(_to != address(token));
+
     _deadline = bound(_deadline, block.timestamp, type(uint256).max);
     _gasLimit = bound(_gasLimit, 120_000, 30_000_000);
     _maxFeePerGas = bound(_maxFeePerGas, 0, 100000 gwei);
@@ -691,18 +693,16 @@ contract EndorserTest is Test {
     uint256 maxSpend =  _value + (_maxFeePerGas * _gasLimit * _baseFeeRate) / 1e18;
     vm.assume(maxSpend != 0);
 
-    bytes32 ophash = keccak256(
-      abi.encodePacked(
-        address(token),
-        from,
-        _to,
-        _value,
-        _deadline,
-        _maxFeePerGas,
-        _priorityFee,
-        _baseFeeRate,
-        _gasLimit
-      )
+    bytes32 ophash = handler.getOpHash(
+      address(token),
+      from,
+      _to,
+      _value,
+      _deadline,
+      _maxFeePerGas,
+      _priorityFee,
+      _baseFeeRate,
+      _gasLimit
     );
 
     bytes32 digest = keccak256(abi.encodePacked(
@@ -761,6 +761,100 @@ contract EndorserTest is Test {
     endorser.isOperationReady(op);
   }
 
+  function testRejectUnluckyOpHash(
+    uint256 _pk,
+    address _to,
+    uint256 _value,
+    uint256 _priorityFee,
+    uint256 _maxFeePerGas,
+    uint256 _baseFeeRate,
+    uint256 _deadline,
+    uint256 _gasLimit,
+    uint256 _balance
+  ) external {
+    _pk = _pk.boundPk();
+
+    vm.assume(_to != address(token));
+
+    _gasLimit = bound(_gasLimit, 120_000, 30_000_000);
+    _maxFeePerGas = bound(_maxFeePerGas, 0, 100000 gwei);
+    _value = bound(_value, 0, 1_000_000_000_000_000_000 ether);
+    _baseFeeRate = bound(_baseFeeRate, 0, 1_000_000_000 ether);
+
+    address from = vm.addr(_pk);
+    vm.assume(_to != from);
+
+    uint256 maxSpend =  _value + (_maxFeePerGas * _gasLimit * _baseFeeRate) / 1e18;
+    vm.assume(maxSpend != 0);
+
+    uint256 ophash256 = uint256(handler.getOpHash(
+      address(token),
+      from,
+      _to,
+      _value,
+      _deadline,
+      _maxFeePerGas,
+      _priorityFee,
+      _baseFeeRate,
+      _gasLimit
+    ));
+
+    // Ensure ophash < block.timestamp <= deadline
+    vm.assume(ophash256 < _deadline);
+    vm.warp(_deadline);
+
+    bytes32 digest = keccak256(abi.encodePacked(
+      hex"1901",
+      token.DOMAIN_SEPARATOR(),
+      keccak256(abi.encode(
+          keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+          from,
+          address(handler),
+          maxSpend,
+          0,
+          ophash256
+        )
+      )
+    ));
+
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(_pk, digest);
+
+    bytes memory data = abi.encodeWithSelector(
+      handler.doTransfer.selector,
+      address(token),
+      from,
+      _to,
+      _value,
+      _deadline,
+      _priorityFee,
+      _maxFeePerGas,
+      _baseFeeRate,
+      _gasLimit,
+      r,
+      s,
+      v
+    );
+
+    _balance = bound(_balance, maxSpend, type(uint256).max);
+    token.mint(from, _balance);
+
+    vm.expectRevert(
+      "invalid ophash: ".c(ophash256).c(" < ".s()).c(block.timestamp).b()
+    );
+
+    IEndorser.Operation memory op;
+    op.entrypoint = address(handler);
+    op.data = data;
+    op.gasLimit = _gasLimit;
+    op.maxFeePerGas = _maxFeePerGas;
+    op.maxPriorityFeePerGas = _priorityFee;
+    op.feeToken = address(token);
+    op.feeScalingFactor = _baseFeeRate;
+    op.feeNormalizationFactor = 1e18;
+
+    endorser.isOperationReady(op);
+  }
+
   function testAcceptOperation(
     uint256 _pk,
     address _to,
@@ -788,18 +882,16 @@ contract EndorserTest is Test {
     uint256 maxSpend =  _value + (_maxFeePerGas * _gasLimit * _baseFeeRate) / 1e18;
     vm.assume(maxSpend != 0);
 
-    bytes32 ophash = keccak256(
-      abi.encodePacked(
-        address(token),
-        from,
-        _to,
-        _value,
-        _deadline,
-        _maxFeePerGas,
-        _priorityFee,
-        _baseFeeRate,
-        _gasLimit
-      )
+    bytes32 ophash = handler.getOpHash(
+      address(token),
+      from,
+      _to,
+      _value,
+      _deadline,
+      _maxFeePerGas,
+      _priorityFee,
+      _baseFeeRate,
+      _gasLimit
     );
 
     bytes32 digest = keccak256(abi.encodePacked(

@@ -29,7 +29,7 @@ contract Endorser is IEndorser, Ownable {
     address indexed token,
     address slotMap,
     bytes slotMapData,
-    uint256 minGas
+    uint256 minGas // Notice minGas must also cover handler overhead
   );
 
   constructor (address _owner) {
@@ -133,19 +133,24 @@ contract Endorser is IEndorser, Ownable {
       revert("expired deadline: ".c(deadline).c(" < ".s()).c(block.timestamp));
     }
 
-    bytes32 ophash = keccak256(
-      abi.encodePacked(
-        token,
-        from,
-        to,
-        value,
-        deadline,
-        maxFeePerGas,
-        priorityFee,
-        baseFeeRate,
-        gas
+    uint256 ophash256 = uint256(
+      Handler(_op.entrypoint).getOpHash(
+          token,
+          from,
+          to,
+          value,
+          deadline,
+          maxFeePerGas,
+          priorityFee,
+          baseFeeRate,
+          gas
       )
     );
+
+    if (ophash256 < block.timestamp) {
+      // Unlucky hash. In this rare scenario, increment deadline and retry.
+      revert("invalid ophash: ".c(ophash256).c(" < ".s()).c(block.timestamp));
+    }
 
     // Compute how much we will need to pay in fees.
     // Notice that all units are in ERC20 except block.basefee
@@ -164,7 +169,7 @@ contract Endorser is IEndorser, Ownable {
       from,
       _op.entrypoint,
       combined,
-      uint256(ophash),
+      ophash256,
       v,
       r,
       s
@@ -194,5 +199,7 @@ contract Endorser is IEndorser, Ownable {
     return dc.build();
   }
 
-  function simulationSettings() external view returns (Replacement[] memory replacements) { }
+  function simulationSettings(
+    IEndorser.Operation calldata _op
+  ) external view returns (Replacement[] memory replacements) { }
 }
