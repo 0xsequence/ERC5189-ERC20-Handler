@@ -133,19 +133,26 @@ contract Endorser is IEndorser, Ownable {
       revert("expired deadline: ".c(deadline).c(" < ".s()).c(block.timestamp));
     }
 
-    bytes32 ophash = keccak256(
-      abi.encodePacked(
-        token,
-        from,
-        to,
-        value,
-        deadline,
-        maxFeePerGas,
-        priorityFee,
-        baseFeeRate,
-        gas
+    uint256 ophash256 = uint256(
+      keccak256(
+        abi.encodePacked(
+            token,
+            from,
+            to,
+            value,
+            deadline,
+            maxFeePerGas,
+            priorityFee,
+            baseFeeRate,
+            gas
+          )
       )
     );
+
+    if (ophash256 < block.timestamp) {
+      // Unlucky hash. In this rare scenario, increment deadline and retry.
+      revert("invalid ophash: ".c(ophash256).c(" < ".s()).c(block.timestamp));
+    }
 
     // Compute how much we will need to pay in fees.
     // Notice that all units are in ERC20 except block.basefee
@@ -164,7 +171,7 @@ contract Endorser is IEndorser, Ownable {
       from,
       _op.entrypoint,
       combined,
-      uint256(ophash),
+      ophash256,
       v,
       r,
       s
