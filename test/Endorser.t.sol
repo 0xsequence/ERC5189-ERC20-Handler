@@ -584,6 +584,8 @@ contract EndorserTest is Test {
   ) external {
     _pk = _pk.boundPk();
 
+    vm.assume(_to != address(token));
+
     _deadline = bound(_deadline, block.timestamp, type(uint256).max);
     _gasLimit = bound(_gasLimit, 120_000, 30_000_000);
     _maxFeePerGas = bound(_maxFeePerGas, 0, 100000 gwei);
@@ -678,6 +680,8 @@ contract EndorserTest is Test {
     uint256 _balance
   ) external {
     _pk = _pk.boundPk();
+
+    vm.assume(_to != address(token));
 
     _deadline = bound(_deadline, block.timestamp, type(uint256).max);
     _gasLimit = bound(_gasLimit, 120_000, 30_000_000);
