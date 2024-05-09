@@ -98,8 +98,8 @@ contract Handler {
         _to,
         _value,
         _deadline,
-        _maxFeePerGas,
         _priorityFee,
+        _maxFeePerGas,
         _feeRate,
         _gas
       )
