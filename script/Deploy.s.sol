@@ -47,7 +47,7 @@ contract Deploy is SingletonDeployer {
                 bool useSolady = vm.envBool("TOKEN_USE_SOLADY");
                 address slotMap;
                 // Deploy slot map
-                if (useSolady) {
+                if (!useSolady) {
                     slotMap = _deployIfNotAlready(
                         "ERC20SlotMapSimple", abi.encodePacked(type(ERC20SlotMapSimple).creationCode), salt, pk
                     );

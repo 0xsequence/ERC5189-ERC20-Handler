@@ -68,7 +68,7 @@ The configure a token, you must know which slots are used for balance and nonce.
 
 Set the configuration values in the `.env` file with the values.
 
-Below is an example for [`USDC` on Arbitrum](https://arbiscan.io/token/0xaf88d065e77c8cc2239327c5edb3a432268e5831?).
+Below is an example for [`USDC` on Arbitrum](https://arbiscan.io/token/0xaf88d065e77c8cc2239327c5edb3a432268e5831).
 
 The `balance` is stored using slot `9` and nonce using slot `17`. These values are abi encoded and stored in the `TOKEN_SLOT_MAP_DATA` variable. `cast abi-encode "x(uint256,uint256)" 9 17` will generate the correct value.
 
