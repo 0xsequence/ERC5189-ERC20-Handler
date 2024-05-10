@@ -81,8 +81,8 @@ contract HandlerTest is Test {
         _to,
         _value,
         _deadline,
-        _maxFeePerGas,
         _priorityFee,
+        _maxFeePerGas,
         _baseFeeRate,
         _gas
       )

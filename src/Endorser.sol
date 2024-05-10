@@ -140,8 +140,8 @@ contract Endorser is IEndorser, Ownable {
           to,
           value,
           deadline,
-          maxFeePerGas,
           priorityFee,
+          maxFeePerGas,
           baseFeeRate,
           gas
       )
